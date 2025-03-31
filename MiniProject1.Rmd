@@ -33,6 +33,12 @@ library(tidyverse)
 library(rio)
 library(skimr)
 library(htmlTable)
+
+#for installing dependencies and packages
+#install.packages("tidyverse", dependencies=TRUE)
+#install.packages("rio", dependencies=TRUE) 
+#install.packages("skimr", dependencies=TRUE)
+#install.packages("htmlTable", dependencies=TRUE)
 ```
 
 2.  There are numerous ways and packages to read in the data in R. For instance, the `haven` package has a function called read_xpt() that allows you to make an R data object converting from a \*.xpt file. The `readr` package provides a fast and friendly way to read rectangular data from delimited files, such as comma-separated values (CSV) and tab-separated values (TSV). The `readxl` package makes it easy to get data out of Excel and into R. The functions that allow you to read in the data regardless of the package tend to have the first argument to be the data path, however it is always important to read the documentation before using a new package or a function.
@@ -43,14 +49,14 @@ Read in the adsl data from the GitHub location (`https://github.com/phuse-org/ph
 
 ```{r read_adsl_data}
 
-adsl <- import(file =  "")
+adsl <- import(file =  "https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt")
 
 ```
 
 3.  To view the first 10 rows of the R object `adsl`, you can just simply type the dataset name. Type in `adsl` into the chunk below and run using the green arrow:
 
 ```{r view_adsl_object}
-
+adsl
 ```
 
 Note that the `adsl` data object has 254 rows and 48 columns.
@@ -73,16 +79,17 @@ Let's check whether the `AGE` variable is numeric and whether `RACE` is characte
 
 ```{r check_variable_types}
 
-is.numeric( )
+is.numeric(adsl$AGE )
 
-is.character( )
+is.character(adsl$RACE )
 
 ```
 
 6.  There are *many* R packages that will help us do tasks with R. The `skimr` package is one of these that quickly displays helpful summary information about a dataset - the number of rows, columns, missing data, column types, distribution of values in data columns.
 
 ```{r skimr}
-
+#works like proc contents/proc means
+#this is a good exploration function for observing your data
 skim(data = adsl)
 
 ```
@@ -95,7 +102,7 @@ If some columns have missing values, you can use these warning messages to check
 
 ```{r create_adsl_eff}
 
-adsl_eff <- filter(.data = , EFFFL == 'Y')
+adsl_eff <- filter(.data = adsl , EFFFL == 'Y')
 
 adsl_eff
 
@@ -109,8 +116,8 @@ Again, recall that R is case-sensitive. Most variable names in SAS datasets are 
 
 ```{r arrange_adsl_eff}
 
-sort_adsl_eff <- arrange(.data = adsl_eff, )
-
+sort_adsl_eff <- arrange(.data = adsl_eff, USUBJID )
+sort_adsl_eff
 ```
 
 In the `tidyverse` package in R, there is a pipe operator `%>%` that allows us to combine a number of steps. The pipe passes the output object from the previous step as the value to be used for the first argument of the next function. So we combine the previous steps into the following data pipeline:
@@ -123,6 +130,7 @@ sort_adsl_eff <- adsl %>%
 
   arrange(USUBJID)
 
+sort_adsl_eff
 ```
 
 When we use the `%>%` operator, we read this as "...then...". So the above pipeline is read as "(Create an object called) **adsl_eff** which is **assigned by** (starting with the object) **adsl** *...then...* **filter** (where EFFFL is"Y") *...then...* **arrange** (by USUBJID)." The pipe operator allows us to combine steps where the intermediate objects aren't really worth keeping as named objects in R. Notice that when we use the pipe operator, we're no longer explicitly using the `.data =` argument of the following function. This is because the `%>%` passes the previous object through as the value of the first argument by default.
@@ -131,14 +139,15 @@ When we use the `%>%` operator, we read this as "...then...". So the above pipel
 
 ```{r skim_adsl_eff}
 
-skim( )
+skim(data=adsl_eff)
 
 ```
 
 10. Sort the `adsl_eff` data by `TRT01A`, `USUBJID` variables and create a new dataset `adsl_eff_srt` You can use the previous code (HINT: `arrange( )`) to sort the data.
 
 ```{r sort_adsl_eff}
-
+adsl_eff_srt <- adsl_eff %>% arrange(TRT01A, USUBJID)
+adsl_eff_srt
 ```
 
 11. The `select` function will select out only the specified columns of a data object. Select only the following variables from the adsl_saf_srt data object: `USUBJID, AGE, AGEU, SEX, RACE, ETHNIC, TRT01A`. Copy and paste this list of variables into the `select` statement.
@@ -147,7 +156,7 @@ skim( )
 
 adsl_eff_srt <- adsl_eff_srt %>%
 
-  select( )
+  select(USUBJID, AGE, AGEU, SEX, RACE, ETHNIC, TRT01A )
 
 adsl_eff_srt
 
@@ -159,7 +168,7 @@ Now the `adsl_eff_srt` data object still has 234 rows, but only 7 columns.
 
 ```{r rename_adsl_eff_srt}
 
-names(x = adsl_eff_srt) <- c( )
+names(x = adsl_eff_srt) <- c("Subject ID","Age","AgeUnits","Sex","Race","Ethnicity","Treatment")
 
 ```
 
@@ -167,17 +176,17 @@ names(x = adsl_eff_srt) <- c( )
 
 ```{r display_adsl_eff_srt}
 
-print( )
+print(adsl_eff_srt)
 
 ```
 
 But to save this output for later use, you'll want to use one of these packages to create an output file with the data listing. Each table package has pros and cons, but for now let's use the `htmlTable` package to display an HTML listing. Add in the data object name below to show the `htmlTable` output. The additional arguments here ensure that the table formats nicely. These are beyond the scope of this first project. Try changing the argument `align = "l"` and try options `align = "c"` or `align = "r"` to align the column content to left, centre or right respectively.
 
 ```{r create_listing_with_htmlTable}
-
+#works like ODS
 htmlTable(x =  adsl_eff_srt,
 
-          align = "l",
+          align = "c",
 
           rnames=FALSE,
 

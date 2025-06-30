@@ -38,14 +38,17 @@ Within R we typically use objects of different types e.g. data, vectors, lists e
 1.  The following steps will load the packages `tidyverse`, `rio`, `skimr` and `htmlTable`. You need to load packages before using the functions and content in them, and it's best to do so at the beginning of a program / script. Run the chunk below by clicking on the green arrow to the right of the code chunk.
 
 ```{r setup}
+#install.packages("haven")
+#install.packages("import")
 library(tidyverse)
 library(rio)
+library(haven)
 ```
 
 2.  Read in the CDISC adsl data from the GitHub location (`https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt`) and assign this to an object in R using the assignment operator `<-`. Make sure that the URL location is a character string by enclosing it in `" "`. The `rio` package has a function called `import` that reads data into R and infers the data type from the file name. The first argument of that function is `file`. Paste the file path / URL above after the `file=` argument in the code below, then run the chunk using the green arrow.
 
 ```{r read_adsl_data}
-adsl <- import( file = ""  )
+adsl <- import(file="https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt")
 adsl
 ```
 
@@ -58,7 +61,7 @@ Now create a new data object `adsl_eff` for Efficacy Analysis population. We nee
 QUICK QUIZ: Which of the following options will filter the data where the variable EFFFL has the value `Y`?
 
 -   filter(.data = adsl, EFFFL = Y)
--   filter(.data = adsl, EFFFL == "Y")
+-   filter(.data = adsl, EFFFL == "Y") 
 -   filter(.data = adsl, "EFFFL" == "Y")
 -   filter(.data = adsl, EFFFL = "y")
 
@@ -70,8 +73,10 @@ If you are unsure, try each option by pasting in the filter statement after the 
 
 ```{r create_adsl_saf}
 adsl_eff <-   adsl %>%
-  filter(  )
-adsl_eff
+ # filter(EFFFL == "Y" )
+  filter(casefold(EFFFL, upper=TRUE) == "Y" )
+   
+adsl_eff 
 ```
 
 After filtering out the data we now have 234 rows and 48 columns.
@@ -92,7 +97,7 @@ In the next code chunk we want to calculate the number of observations within ea
 
 ```{r group_by}
 adsl_eff %>%
-  group_by( ) %>%
+  group_by(TRT01A) %>%
   count(name = "N")
 ```
 
@@ -102,7 +107,7 @@ Whenever you use `group_by()` R will carry along the grouping variables into the
 
 ```{r big_N}
 Big_N_cnt <- adsl_eff %>%
-  group_by(   ) %>%
+  group_by( TRT01AN, TRT01A  ) %>%
   count(name = "N")
 Big_N_cnt
 ```
@@ -113,7 +118,7 @@ Big_N_cnt
 
 ```{r small_n}
 small_n_cnt <- adsl_eff %>%
-  group_by( TRT01AN, TRT01A,  ) %>%
+  group_by( TRT01AN, TRT01A, SEX ) %>%
   count(name = "n")
 small_n_cnt
 ```
@@ -122,7 +127,7 @@ Do we get different answers if we use the `group_by()` variables in a different 
 
 ```{r change_group_order}
 adsl_eff %>%
-  group_by(  ) %>%
+  group_by( SEX, TRT01AN, TRT01A ) %>%
   count(name = "n")
 ```
 
@@ -146,6 +151,7 @@ If you *need* to, you can explicitly define which variables to join by, and iden
 
 ```{r}
 small_n_cnt %>%
+                              #create character vector
   left_join(Big_N_cnt, by = c("TRT01A", "TRT01AN"))
 ```
 
@@ -175,6 +181,7 @@ To investigate this, let's look at a few example values
 ```{r rounding}
 x <- c(1.1, 1.499, 1.5,1.9, 2.5)
 round(x)
+
 ```
 
 Notice that R rounds 1.5 and 2.5 to the nearest even values. This follows the IEC 60559 standard (see also 'IEEE 754'). That is, it's not ***wrong***, it's just ***different to SAS.*** Be aware of this, check the R help for a function using e.g. `?round` and also check SAS documentation to see how each tool calculates values.
@@ -187,7 +194,7 @@ To round the values for our table, we want to use the `round()` function within 
 
 ```{r mutate_and_round}
 adsl_mrg_cnt %>%
-  mutate(perc = round((n/N)*100, digits=1))
+  mutate(perc = round((n/N)*100, digits=1)) 
 ```
 
 8.  Formatting numeric values for use in tables.
@@ -302,9 +309,14 @@ In steps 6, 7, 8 and 9 we have looked at R chunks that merge the data, calculate
 
 ```{r pipeline}
 # Paste commands above after the "<-" assignment, one per line
-adsl_mrg_cnt <- 
-  
-
+adsl_mrg_cnt <-  small_n_cnt %>%
+                 left_join(Big_N_cnt) %>%
+                mutate(perc = round(n/N*100, digits=1)) %>%
+                mutate(perc_char = format(perc, nsmall=1)) %>%
+                mutate(npct = paste(n, "(", perc_char, ")" ) ) %>%
+                mutate(SEX = recode(SEX, "M" = "Male", "F" = "Female")) %>%
+                ungroup() %>%
+                select(TRT01A, SEX, npct)
 # Display this data so we can check it
 adsl_mrg_cnt
 ```
@@ -325,9 +337,32 @@ adsl_mrg_cnt %>%
 Repeat the steps above, but add an additional grouping variable to the calculation of Big_N\_cnt and small_n\_cnt - `AGEGRP`. Here's the first step:
 
 ```{r}
-adsl_saf %>%
-  group_by(TRT01AN, TRT01A, AGEGR1N, AGEGR1) %>%
+
+#big N count with AGEGRP
+N_CNT <- adsl_eff %>%
+  group_by(TRT01AN, TRT01A,SEX) %>%
   count(name = "N")
+N_CNT
+
+#small n count with AGEGRP
+n_CNT <- adsl_eff %>%
+  group_by(TRT01AN, TRT01A,SEX,AGEGR1N, AGEGR1) %>%
+  count(name = "n")
+
+#combine
+adsl_mrg_cnt2 <- n_CNT  %>%
+  left_join(N_CNT) %>%
+  mutate(perc = round(n/N*100, digits=1)) %>%
+  mutate(perc_char = format(perc, nsmall=1)) %>%
+  mutate(npct = paste(n, "(", perc_char, ")" ) ) %>%
+  mutate(SEX = recode(SEX, "M" = "Male", "F" = "Female")) %>%
+  ungroup() %>%
+  select(TRT01A,SEX, AGEGR1, npct) %>% pivot_wider(names_from = TRT01A, values_from = npct)
+ 
+
+adsl_mrg_cnt2
+
+
 ```
 
 To check that your code is reproducible, you will want to use the "knit" button on the RStudio IDE interface to create an HTML file based on your saved .Rmd file. If your code chunks are reproducible then you should get an HTML file as a result. If NOT (if there's an error or if the "knit" process fails) then click on the arrow to the right of the "Run" button and select "Restart R and Run All Chunks". Then troubleshoot which chunk is causing problems.
@@ -335,6 +370,42 @@ To check that your code is reproducible, you will want to use the "knit" button 
 ## Challenge 2:
 
 Generate Counts and Percentages of Body Text Term (AEBODSYS) for Safety Population (SAFFL) based on the this CDISC dataset: `adae.xpt`
+
+
+```{r}
+adae <- import(file ='https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adae.xpt' )
+adae
+
+#filter only safety flag
+adae_saf <- adae %>% filter(SAFFL == "Y")
+adae_saf
+
+#BIGN
+Big_N <- adae_saf %>%
+  group_by(TRTAN, TRTA) %>%
+  count(name = "N")
+Big_N
+
+#SMALLN
+small_n <- adae_saf %>%
+  group_by(TRTAN, TRTA,AEBODSYS) %>%
+  count(name = "n")
+small_n
+
+#combine
+adae_mrg_cnt <- small_n  %>%
+  left_join(Big_N) %>%
+  mutate(perc = round(n/N*100, digits=1)) %>%
+  mutate(perc_char = format(perc, nsmall=1)) %>%
+  mutate(npct = paste(n, "(", perc_char, ")" ) ) %>%
+  ungroup() %>%
+  select(TRTA,AEBODSYS, npct) %>% pivot_wider(names_from = TRTA, values_from = npct)
+ 
+
+adae_mrg_cnt
+
+```
+
 
 
 Save the .RMD file on your desktop and click on the "Knit" button at the top of the file to render an HTML version of this document.

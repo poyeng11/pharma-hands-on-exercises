@@ -54,12 +54,13 @@ and we introduce the following functions:
 ```{r setup}
 library(tidyverse)
 library(rio)
+#rio::install_formats()
 ```
 
 2.   Read in the CDISC adsl data from the GitHub location (`https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt`) and assign this to an object in R using the assignment operator `<-`. Make sure that the URL location is a character string by enclosing it in `" "`. The `rio` package has a function called `import` that reads data into R and infers the data type from the file name. The first argument of that function is `file`. Paste the file path / URL above after the `file=` argument in the code below, then run the chunk using the green arrow.
 
 ```{r read_adsl}
-adsl <- import( file = ""  )
+adsl <- import( file = "https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt"  )
 adsl
 ```
 
@@ -67,8 +68,10 @@ Next filter the adsl dataset where the EFFFL variable has the value "Y" (as we d
 
 ```{r create_adsl_eff}
 adsl_eff <- adsl %>%
-  filter(  ) %>%
+  filter(EFFFL == "Y"  ) %>%
   mutate(SEX = recode(SEX, "M" = "Male", "F" = "Female")) 
+
+adsl_eff
 ```
 
 3.  Create a dataframe (age_mean) to hold the mean Age (Grouped by Treatment and Gender) needed for the demog table.
@@ -85,7 +88,7 @@ The {dplyr} package has a function called `summarize()` that will calculate vari
 
 ```{r}
 adsl_eff %>%
-  group_by(  ) %>% 
+  group_by( TRT01AN, TRT01A, SEX ) %>% 
   summarize(mean =(mean(AGE)))
 ```
 
@@ -95,8 +98,8 @@ Notice that there are 5 decimal places outputted in the mean values. We do not o
 adsl_eff %>%
   group_by( TRT01A, TRT01AN, SEX ) %>%
   summarize(mean = (mean( AGE ) %>% 
-                      round(digits =  ) %>%
-                      format(nsmall =  ))
+                      round(digits = 1 ) %>%
+                      format(nsmall = 1 ))
   )
 ```
 
@@ -105,13 +108,13 @@ adsl_eff %>%
 Using the above information, finish the code below by creating a data frame named `age_stat` starting from the dataset `adsl_eff` that holds summary statistics. Create a standard deviation variable titled "sd", median titled "med", min titled "min", max titled "max", and a count variable titled "n" (count for whole dataset). Make sure to convert each variable to character with the format function, and specify 1 decimal place for sd and 0 for the rest.
 
 ```{r}
-age_stat<- adsl_eff %>%
+age_stat <- adsl_eff %>%
   group_by(TRT01AN,TRT01A,SEX) %>%
-  summarize(mean = (mean( ) %>% round(digits = 1) %>% format(nsmall=1))  ,
-            sd = (sd( ) %>% round(digits = 1) %>% format(nsmall = 1)), 
-            med = median( )  ,              
-            min = min( ), 
-            max = max( ),
+  summarize(mean = (mean(AGE ) %>% round(digits = 1) %>% format(nsmall=1))  ,
+            sd = (sd(AGE) %>% round(digits = 1) %>% format(nsmall = 1)), 
+            med = median(AGE)  ,              
+            min = min(AGE), 
+            max = max(AGE),
             n = n())
 
 age_stat
@@ -120,15 +123,17 @@ age_stat
 5.  Since our output table includes ranges, we will need to combine the min and max value into a character string (as we did with counts and percentages in Mini Project 2). In the code chunk below, generate a data frame named `age_stat2`, and combine `min` and `max`?? in a new variable to get a Range statistic called range_minmax.
 
 ```{r}
-age_stat %>%
+age_stat2 <- age_stat %>%
     mutate(range_minmax=paste("(",min, ",", max, ")"))
+
+age_stat2
 ```
 
 Notice that there is a space between the first parentheses and the first digit. Please update the code below to eliminate the space. Refer back to exercise 9 from Mini Project 2.
 
 ```{r}
 age_stat2<-age_stat %>%
-  mutate(range_minmax= paste("(",min, ",", max, ")"))
+  mutate(range_minmax= paste0("(",min, ",", max, ")"))
 
 age_stat2
 
@@ -202,6 +207,81 @@ agestat_cat
 
 To check that your code is reproducible, you will want to use the "knit" button on the RStudio IDE interface to create an HTML file based on your saved .Rmd file. If your code chunks are reproducible then you should get an HTML file as a result. If NOT (if there's an error or if the "knit" process fails) then click on the arrow to the right of the "Run" button and select "Restart R and Run All Chunks". Then troubleshoot which chunk is causing problems.
 
+```{r}
+
+advs <- import( file = "https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/advs.xpt"  )
+advs
+
+  
+     #function version:
+    varSummary2 <- function(.data=NULL,variable,filter) {
+    .data %>% 
+    filter(PARAMCD == {{filter}} ) %>%
+    mutate(SEX = recode(SEX, "M" = "Male", "F" = "Female")) %>%
+    group_by(TRTAN,TRTA,SEX) %>%
+    summarize(mean = mean({{variable}}) %>% round(digits = 1) %>% format(nsmall=1)  ,
+              sd = sd({{variable}}) %>% round(digits = 1) %>% format(nsmall = 1), 
+              med = median({{variable}})  ,              
+              min = min({{variable}}), 
+              max = max({{variable}}),
+              n = n()) %>%
+             mutate(range_minmax= paste0("(",min, ",", max, ")")) 
+    }
+       
+
+###############################for weight#####################################################
+Weight_stat <- advs %>%
+  varSummary2(AVAL,"WEIGHT") 
+
+#long format 
+Weight_stat_long <- Weight_stat %>% 
+   ungroup() %>%
+        select("TRTA","SEX", "n", "mean", "med", "sd", "range_minmax") %>% 
+        mutate(across(where(is.numeric), .fns = as.character)) %>%
+        pivot_longer(-c("TRTA","SEX"), names_to ="category", values_to = "values" )
+
+Weight_stat_long
+
+#wide format
+wtstat_cat <- Weight_stat_long %>%
+  pivot_wider(names_from = c(TRTA, SEX), values_from = values) %>%
+  mutate(category = case_when(category == "n" ~ "N",
+                              category == "med" ~ "Median", 
+                              category == "mean" ~ "Mean", 
+                              category == "sd" ~ "Std Dev", 
+                              category == "range_minmax" ~ "Range(min,max)")) 
+
+wtstat_cat
+
+
+###############################for Height#####################################################
+Height_stat <- advs %>%
+  varSummary2(AVAL,"HEIGHT") 
+
+#long format 
+Height_stat_long <- Height_stat %>% 
+   ungroup() %>%
+        select("TRTA","SEX", "n", "mean", "med", "sd", "range_minmax") %>% 
+        mutate(across(where(is.numeric), .fns = as.character)) %>%
+        pivot_longer(-c("TRTA","SEX"), names_to ="category", values_to = "values" )
+
+Height_stat_long
+
+#wide format
+htstat_cat <- Height_stat_long %>%
+  pivot_wider(names_from = c(TRTA, SEX), values_from = values) %>%
+  mutate(category = case_when(category == "n" ~ "N",
+                              category == "med" ~ "Median", 
+                              category == "mean" ~ "Mean", 
+                              category == "sd" ~ "Std Dev", 
+                              category == "range_minmax" ~ "Range(min,max)")) 
+
+htstat_cat
+
+```
+
+
+
 Save the .RMD file on your desktop and click on the "Knit" button at the top of the file to render an HTML version of this document.
 
 ### Extra credit / Top tip:
@@ -213,11 +293,11 @@ You can quickly convert from code like this:
 ```{r}
 age_stat<- adsl_eff %>%
   group_by(TRT01AN,TRT01A,SEX) %>%
-  summarize(mean = mean( ) %>% round(digits = 1) %>% format(nsmall=1)  ,
-            sd = sd( ) %>% round(digits = 1) %>% format(nsmall = 1), 
-            med = median( )  ,              
-            min = min( ), 
-            max = max( ),
+  summarize(mean = mean( AGE) %>% round(digits = 1) %>% format(nsmall=1)  ,
+            sd = sd(AGE ) %>% round(digits = 1) %>% format(nsmall = 1), 
+            med = median(AGE )  ,              
+            min = min(AGE ), 
+            max = max( AGE),
             n = n())
 
 age_stat
@@ -229,11 +309,11 @@ To a function like this:
 varSummary <- function(adsl_eff, TRT01AN, TRT01A, SEX) {
   adsl_saf %>%
     group_by(TRT01AN,TRT01A,SEX) %>%
-    summarize(mean = mean( ) %>% round(digits = 1) %>% format(nsmall=1)  ,
-              sd = sd( ) %>% round(digits = 1) %>% format(nsmall = 1), 
-              med = median( )  ,              
-              min = min( ), 
-              max = max( ),
+    summarize(mean = mean(AGE ) %>% round(digits = 1) %>% format(nsmall=1)  ,
+              sd = sd(AGE ) %>% round(digits = 1) %>% format(nsmall = 1), 
+              med = median(AGE )  ,              
+              min = min( AGE), 
+              max = max(AGE ),
               n = n())
 }
 ```
@@ -246,15 +326,15 @@ Let's change the input data argument to .data to match what we see in {tidyverse
 varSummary <- function(.data, variable) {
   .data %>%
     group_by(TRT01AN,TRT01A,SEX) %>%
-    summarize(mean = mean(variable ) %>% round(digits = 1) %>% format(nsmall=1)  ,
-              sd = sd(variable) %>% round(digits = 1) %>% format(nsmall = 1), 
-              med = median(variable)  ,              
-              min = min(variable ), 
-              max = max(variable ),
+    summarize(mean = mean({{variable}} ) %>% round(digits = 1) %>% format(nsmall=1)  ,
+              sd = sd({{variable}}) %>% round(digits = 1) %>% format(nsmall = 1), 
+              med = median({{variable}})  ,              
+              min = min({{variable}} ), 
+              max = max({{variable}} ),
               n = n())
 }
 
-adsl_saf %>%
+adsl_eff %>%
   varSummary(AGE)
 ```
 
@@ -272,6 +352,6 @@ varSummary <- function(.data = NULL, variable = NULL) {
               n = n())
 }
 
-adsl_saf %>%
+adsl_eff %>%
   varSummary(AGE)
 ```

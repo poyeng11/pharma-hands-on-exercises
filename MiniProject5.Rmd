@@ -32,6 +32,7 @@ PR <- ADVS %>%
   filter(VISITNUM > 3) %>%
   mutate(StudyWeek = floor(ADY/7))
 
+PR
 ```
 
 ## 2. Use basic ggplot function
@@ -95,7 +96,7 @@ In Step 4 above, we defined a `group` mapping to show data for each level of `TR
 
 ```{r}
 plot1 <- PR %>%
-  ggplot(data = PR, mapping = aes(x=ADY, y=AVAL, group =  )) +
+  ggplot(data = PR, mapping = aes(x=ADY, y=AVAL, group = USUBJID )) +
   geom_line()
 
 plot1
@@ -109,10 +110,10 @@ Change the text in the `labs()` statement below to make sensible titles and axes
 
 ```{r}
 plot2 <- plot1 + 
-  labs(title = "Plot Title",
-       subtitle = "Plot subtitle",
-       x = "X-axis label",
-       y = "Y-axis label",
+  labs(title = "Spaghetti Plot",
+       subtitle = "by Subject",
+       x = "Study Week",
+       y = "Heart Rate",
        caption = paste("Plot created on:",Sys.Date()))
 plot2
 ```
@@ -121,7 +122,9 @@ You can also choose a theme for the plot from a wide range of `{ggplot2}` themes
 
 ```{r}
 plot3 <- plot2 +
-  theme_bw()
+ # theme_bw()
+ # theme_light()
+   theme_gray()
 plot3
 ```
 
@@ -145,7 +148,7 @@ NOTE: If you are saving from this .rmd file then the plots and output object wil
 
 ```{r}
 plot4 
-ggsave(filename = "myPlot.png", device = "png", width = 192, height = 108, units = "mm")
+ggsave(filename = "mySphagettiPlot.png", device = "png", width = 192, height = 108, units = "mm")
 saveRDS(object = plot4, file = "savedPlot.rds")
 ```
 
@@ -212,7 +215,8 @@ Sometimes we want to limit the plot axes to "zoom in" on an area of the plot whe
 
 ```{r}
 plot4 + 
-  coord_cartesian(ylim=c(50, 120))
+  #coord_cartesian(ylim=c(50, 120))
+  scale_y_continuous(limits=c(50, 120))
 ```
 
 ## 11. The ggplot2 object.
@@ -297,10 +301,104 @@ SysBP_plot +
 Do the same for Diastolic BP and Temperature. Ensure that the axes labels match the type of data used.\
 Update `plot4` for the new endpoint.
 
+```{r}
+#DIASTOLIC BP
+DiasBP <- ADVS  %>%
+  filter(PARAMN == 2) %>%
+  filter(VISITNUM > 3) 
+
+DiasBP_plot <- plot4 %+%
+  DiasBP
+
+xLab <- quo_name(DiasBP_plot$mapping$x)
+yLab <- quo_name(DiasBP_plot$mapping$y)
+groupLab <- quo_name(DiasBP_plot$mapping$group)
+
+study <- uniqueVal(DiasBP_plot$data$STUDYID)
+measure <- uniqueVal(DiasBP_plot$data$PARAM)
+
+
+xLab <- ifelse(xLab == "ADY", "Analysis Relative Day", xLab)
+groupLab <- case_when(groupLab == "USUBJID" ~ "Subject", 
+                      groupLab == "TRTA" ~ "Treatment",
+                      TRUE ~ groupLab)
+
+DiasBP_plot + 
+  labs(title = glue::glue("Study {study}"),
+       subtitle = glue::glue("Plot of {measure} by {groupLab}"),
+       x = xLab,
+       y = glue::glue("{measure}"))
+
+
+#TEMPERATURE
+TemP <- ADVS  %>%
+  filter(PARAMN == 6) %>%
+  filter(VISITNUM > 3) 
+
+TemP_plot <- plot4 %+%
+  TemP
+
+xLab <- quo_name(TemP_plot$mapping$x)
+yLab <- quo_name(TemP_plot$mapping$y)
+groupLab <- quo_name(TemP_plot$mapping$group)
+
+study <- uniqueVal(TemP_plot$data$STUDYID)
+measure <- uniqueVal(TemP_plot$data$PARAM)
+
+
+xLab <- ifelse(xLab == "ADY", "Analysis Relative Day", xLab)
+groupLab <- case_when(groupLab == "USUBJID" ~ "Subject", 
+                      groupLab == "TRTA" ~ "Treatment",
+                      TRUE ~ groupLab)
+
+TemP_plot + 
+  labs(title = glue::glue("Study {study}"),
+       subtitle = glue::glue("Plot of {measure} by {groupLab}"),
+       x = xLab,
+       y = glue::glue("{measure}"))
+
+
+ggsave(filename = "mySphagettiPlot-TEMP.png", device = "png", width = 192, height = 108, units = "mm")
+saveRDS(object = TemP_plot, file = "savedPlot.rds")
+```
+
+
 ## Extra challenge
 
 Read in vital signs data from another study which uses the `VS` or `ADVS` dataset standards. What code needs to change when you produce Pulse Rate plot for the new dataset (compared to the Pulse Rate plot which uses data values to determine labels)?
 
 ```{r}
-sessioninfo::session_info()
+#VS/Heart rate
+ADVS <- import("https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdiscpilot01/advs.xpt")
+
+
+
+PulseRate <- ADVS  %>%
+  filter(PARAMN == 3) %>%
+  filter(VISITNUM > 3) 
+
+PulseRate_plot <- plot4 %+%
+  PulseRate
+
+xLab <- quo_name(PulseRate_plot$mapping$x)
+yLab <- quo_name(PulseRate_plot$mapping$y)
+groupLab <- quo_name(PulseRate_plot$mapping$group)
+
+study <- uniqueVal(PulseRate_plot$data$STUDYID)
+measure <- uniqueVal(PulseRate_plot$data$PARAM)
+
+
+xLab <- ifelse(xLab == "ADY", "Analysis Relative Day", xLab)
+groupLab <- case_when(groupLab == "USUBJID" ~ "Subject", 
+                      groupLab == "TRTA" ~ "Treatment",
+                      TRUE ~ groupLab)
+
+PulseRate_plot + 
+  labs(title = glue::glue("Study {study}"),
+       subtitle = glue::glue("Plot of {measure} by {groupLab}"),
+       x = xLab,
+       y = glue::glue("{measure}"))
+
+
+#sessioninfo::session_info()
 ```

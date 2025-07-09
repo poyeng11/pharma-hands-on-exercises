@@ -45,6 +45,8 @@ uniqueVal <- function(x){
   if(length(unique(x))>1) simpleWarning(paste0("More than one value in column:",x))
   unique(x)
 }
+
+ALT2
 ```
 
 ## 2. Create a spaghetti plot of ALT measurements over time
@@ -119,8 +121,8 @@ Now let's add data on top of the boxplots. We can do this quite easily using `ge
 ALT2 %>%
   filter(WEEK %in% c(0, 5, 10, 15, 20, 25, 30)) %>%
   ggplot( ) +
-  geom_boxplot( ) +
-  geom_point( )
+  geom_boxplot(mapping = aes(x = as.factor(WEEK), y = LBSTRESN) ) +
+  geom_point(mapping = aes(x = as.factor(WEEK), y = LBSTRESN) )
 ```
 
 It might be more useful to spread out the points a little so that we can see individual points. We do this using `geom_jitter`. We can also apply the `alpha` setting to the points to add transparency so we can see the boxplots beneath. The `width` option in `geom_jitter` controls the horizontal jittering of the points. Smaller values will cluster them closer to the middle of the boxplot. The default is to use the full width of the boxplot. Note that in `geom_boxplot` we set the argument `outlier.shape = NA` which will "turn off" showing the outliers, since in this case we show them via `geom_jitter` we don't need to show them in the boxplot ***as well***.
@@ -128,7 +130,7 @@ It might be more useful to spread out the points a little so that we can see ind
 ```{r}
 plot2b <- ALT2 %>%
   filter( ) %>%
-  ggplot(mapping = aes(x = , y = )) +
+  ggplot(mapping = aes(x = as.factor(WEEK) , y = LBSTRESN )) +
   geom_boxplot(  ) +
   geom_jitter(alpha = 0.2, width = 0.1)
 
@@ -182,7 +184,7 @@ Use the "Data visualization with ggplot2" Cheat Sheet (from the Help menu in RSt
 ```{r}
 ALT2 %>%
   ggplot() +
-  geom_bar(mapping = aes( ))
+  geom_bar(mapping = aes(x =WEEK, fill= LBNRIND))
 ```
 
 Most individuals have Lab measurements on weeks 2, 4, 6, 8, 16, 24, 26. Let's filter the data to show JUST those weeks.
@@ -225,15 +227,21 @@ As we did in the last mini project, we can now take plots `plot1b` and `plot2b` 
 
 ```{r}
 plot1e <- plot1b +
-  labs(x =  ,
-       y =   )
+  labs(x = "Study Day"  ,
+       y = "ALT2"   )
+
+plot1e
 
 plot2c <- plot2b +
-  labs(x =  , y =   )
+  labs(x = "Study Week " , y = "ALT2"   )
+
+plot2c
 
 plot3c <- plot3b +
-  labs(x =  ,
-       y =  )
+  labs(x = "Study Week",
+       y = "Frequency" )
+
+plot3c
 ```
 
 ## 7. Using `{patchwork}`
@@ -262,8 +270,8 @@ You can then use these combined plots as one object, provide a title for the com
 
 ```{r}
 p2b <- p2 + plot_annotation(
-  title =  ,
-  subtitle =  ,
+  title = "Graphs for ALT2"  ,
+  subtitle = "by different plots" ,
   tag_levels="a", tag_suffix = ")")
 
 p2b
@@ -291,5 +299,27 @@ knitr::include_graphics(path = "img/MiniProject6_challenge.png")
 ```
 
 ```{r}
-sessioninfo::session_info()
+#sessioninfo::session_info()
+
+ALT2 <- ALT %>%
+  filter(VISITNUM > 3) %>%
+  mutate(WEEK = floor(ADY/7))
+
+ALTx <-ALT2 %>%
+  filter(WEEK %in% c(0, 1, 2, 4, 8, 16)) %>%
+  mutate(OUTRANGT = factor(LBNRIND, 
+                           levels = c("LOW","HIGH"))) %>%
+   filter(OUTRANGT %in% c("HIGH", "LOW"))
+
+plotx <-ALT2 %>%
+  filter(WEEK %in% c(0, 1, 2, 4, 8, 16)) %>%
+  ggplot(mapping = aes(x = LBSTRESN, y = as.factor(WEEK))) +
+  coord_cartesian(xlim=c(0, 150)) +
+  stat_dotsinterval(slab_shape = 19, quantiles = 100)+
+  geom_point( data=ALTx,  color="red") +
+  labs(x = "Alanine Aminotransferase U/L"  ,
+       y = "Week"   )
+
+ggdraw(plotx) + 
+  draw_label("DRAFT", color = "grey", alpha=0.3, size = 100, angle = 45) 
 ```

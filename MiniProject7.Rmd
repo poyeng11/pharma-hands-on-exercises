@@ -9,6 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(haven)
+library(rio)
+library(glue)
+library(ggdist)
 ```
 
 ## 1. Introduction
@@ -49,6 +52,7 @@ adsl_saf <- import("https://github.com/phuse-org/phuse-scripts/raw/master/data/a
     pivot_wider(names_from = TRT01A, values_from = npct)
   
   adsl_mrg_cnt
+  
 ```
 
 ## 2. Features of a function
@@ -151,7 +155,7 @@ Use the RStudio IDE `fun` snippet to create a function called "adsl_counts" base
 ```{r}
 
 adsl_counts <- function(dataFile){
- adsl_saf <- read_xpt(  ) %>%
+ adsl_saf <- read_xpt(dataFile  ) %>%
     filter(SAFFL == "Y")
   
   Big_N_cnt <-  adsl_saf %>%
@@ -223,7 +227,7 @@ My recommendation is to write the function, check that it works, THEN go back th
 2.  from the "Code" menu, select "Rename in scope" - type `adsl_File` to rename the argument AND instances of this argument ***within the function***.
 
 ```{r}
-adsl_counts <- function(dataFile){
+adsl_counts <- function(adsl_File){
     adsl_saf <- read_xpt(  ) %>%
     filter(SAFFL == "Y")
   
@@ -267,16 +271,16 @@ As we said earlier, if we're writing functions for use in `{tidyverse}` data pip
 Amend the function code below to instead calculate based on an input dataset, like the `adsl_saf` data. You'll need to update code for `Big_N_cnt` and `small_n_cnt` to point to the input to the function (the input dataset). Check that the code works by running the chunk.
 
 ```{r}
-adsl_counts <- function(adsl_FilePath) {
-  adsl_saf <- read_xpt(   ) %>%
-    filter(SAFFL == "Y")
+adsl_counts <- function(adsl_File) {
+ # adsl_saf <- read_xpt(   ) %>%
+  #  filter(SAFFL == "Y")
   
-  Big_N_cnt <-  adsl_saf   %>%
+  Big_N_cnt <-  {adsl_File}   %>%
     group_by( TRT01AN, TRT01A  ) %>%
     count(name = "N")
   Big_N_cnt
   
-  small_n_cnt <-  adsl_saf  %>%
+  small_n_cnt <-  {adsl_File}  %>%
     group_by( TRT01AN, TRT01A,  SEX ) %>%
     count(name = "n")
   small_n_cnt
@@ -305,6 +309,8 @@ table1 <- read_xpt(inFile) %>%
     filter(SAFFL == "Y") %>%
   adsl_counts()
 table1
+
+
 ```
 
 ## 7. Troubleshooting and debugging functions
@@ -338,3 +344,44 @@ In the code above we are allowing the user to pass the `digits` argument through
 ## Challenge
 
 Convert the code you wrote in the Mini Project 6 challenge into a function that takes an input `adlb` dataset and produces the graph. For an additional challenge, allow the user to specify the axes labels.
+
+```{r}
+library(cowplot)
+
+ADLB_Plot <- function(mydata,x_label,y_label) {
+  
+ ALT2 <- read_xpt({mydata}) %>%
+  filter(PARAMCD == "ALT")%>%
+  filter(VISITNUM > 3) %>%
+  mutate(WEEK = floor(ADY/7)) %>%
+  filter(WEEK %in% c(0, 1, 2, 4, 8, 16)) %>%
+  mutate(OUTRANGT = factor(LBNRIND, 
+                            levels = c("LOW","NORMAL","HIGH"))) 
+
+ 
+ ALTx <-ALT2 %>%
+  filter(WEEK %in% c(0, 1, 2, 4, 8, 16)) %>%
+  mutate(OUTRANGT = factor(LBNRIND, 
+                           levels = c("LOW","HIGH"))) %>%
+   filter(OUTRANGT %in% c("HIGH", "LOW"))
+
+ plotx <-ALT2 %>%
+  ggplot(mapping = aes(x = LBSTRESN, y = as.factor(WEEK))) +
+  coord_cartesian(xlim=c(0, 150)) +
+  stat_dotsinterval(slab_shape = 19, quantiles = 100)+
+  geom_point( data=ALTx,  color="red") +
+  labs(x = {x_label}  ,
+       y = {y_label}   )
+
+ggdraw(plotx) + 
+  draw_label("DRAFT", color = "grey", alpha=0.3, size = 100, angle = 45) 
+}
+
+
+inFile <- "https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adlbc.xpt"
+
+ADLB_Plot(inFile,"Alanine Aminotransferase U/L","Week")
+
+ADLB_Plot(inFile,"Alanine Aminotransferase (U/L)","Study Week")
+```
+

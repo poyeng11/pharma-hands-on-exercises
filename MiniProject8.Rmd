@@ -12,6 +12,8 @@ library(rio)
 
 adsl_saf <- import("https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt") %>%
     filter(SAFFL == "Y")
+
+adsl_saf
 ```
 
 ## Overview
@@ -91,14 +93,14 @@ While this works, the code is a bit clunky. I see code like this (or variations 
 Note that this results in ***a vector of named elements***, rather than a dataset, so it's not so easy to extract the element you might want. Trying the `{tidyverse}` `select` statement results in an error.
 
 ```{r}
-counts %>%
-  select(STUDYID)
+#counts %>%
+ # select(STUDYID)
 ```
 
 It's not immediately clear from the error above exactly what the problem is. Subsetting by variable name, assuming that `counts` is a data frame (and so has two dimensions):
 
 ```{r}
-counts[,"STUDYID"]
+#counts[,"STUDYID"]
 ```
 
 Again, the error is a little cryptic. And while ***you*** might remember that this is a named vector, someone else checking your code is highly likely to miss this.
@@ -222,10 +224,10 @@ adsl_saf %>%
 An alternative might be `all_of` but then if a column is missing from the set, the operation will stop.
 
 ```{r}
-adsl_saf %>%
-  summarise(across(.cols = all_of(c("AGE","SEX", "RACE","ETHNIC","MIKE")),
-                   .fns = nonMissing)
-            )
+#adsl_saf %>%
+  #summarise(across(.cols = all_of(c("AGE","SEX", "RACE","ETHNIC","MIKE")),
+  #                 .fns = nonMissing)
+   #         )
 
 ```
 
@@ -328,4 +330,27 @@ Using each of these packages is a little out of scope for this Mini-Project, but
 ## Challenge
 
 Apply the `adsl_counts` function that you developed in Mini-Project 7 to the `adsl_saf` data here, to show the counts of `SEX` by `TRT01A` for each value of `RACE`.
+
+```{r}
+
+
+adsl_counts <- function(adsl_File) {
+
+  Count <-  {adsl_File}  %>%
+    group_by( TRT01AN, TRT01A, RACE )   %>%
+    summarise(across(.cols = SEX, .fns = nonMissing )) %>%
+    ungroup() %>%
+    select(TRT01A, RACE, SEX) %>%
+    pivot_wider(names_from = TRT01A, values_from = SEX)
+}
+
+
+table1 <- adsl_saf %>%
+    filter(SAFFL == "Y") %>%
+  adsl_counts()
+table1
+
+
+
+```
 

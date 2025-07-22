@@ -131,10 +131,10 @@ Within the Environment tab in RStudio you can flip between the function Environm
 If you have a function that calls a function, what does the debug mode show you? Let's define a new function which takes the results of `myFunction` and then squares the result.
 
 ```{r}
-myFunction_add3_and_squareit <- function(x){
+debugonce(myFunction_add3_and_squareit <- function(x){
   y <- myFunction(x)
   y*y
-}
+})
 ```
 
 When you run the following code, don't forget to specify `debugonce(myFunction_add3_and_squareit)` at the Console ***first***. Otherwise the code will run all the way through...
@@ -233,7 +233,7 @@ myFunction_add3_and_squareit("a")
 Where is the ***source*** of the error in the `adsl_counts` function below?
 
 ```{r, eval=FALSE}
-adsl_counts <- function(dataFile) {
+debugonce(adsl_counts <- function(dataFile) {
   
  adsl_saf <- dataFile %>%
     filter(SAFFL == "Y")
@@ -245,6 +245,51 @@ adsl_counts <- function(dataFile) {
   small_n_cnt <- adsl_saf %>%
     group_by( TRT01AN, TRT01A,  SEX ) %>%
     summarise(name = "n")
+
+  adsl_mrg_cnt <- small_n_cnt %>%
+    left_join(Big_N_cnt, by = c("TRT01AN","TRT01A")) %>%
+    mutate(perc = round((n/N)*100, digits=1)) %>%
+    mutate(perc_char = format(perc, nsmall=1)) %>%
+    mutate(npct = paste(n, 
+                        paste0( "(", perc_char, ")" ) 
+                        ) 
+           ) %>%
+    mutate(SEX = recode(SEX, 
+                        "M" = "Male",
+                        "F" = "Female")) %>%
+    ungroup() %>%
+    select(TRT01A, SEX, npct) %>%
+    pivot_wider(names_from = TRT01A, values_from = npct) 
+  
+  return(adsl_mrg_cnt)
+})
+
+library(rio)
+library(tidyverse)
+
+inFile <- "https://github.com/phuse-org/phuse-scripts/raw/master/data/adam/cdisc/adsl.xpt"
+
+adsl <- import(inFile)
+
+adsl_counts(dataFile = adsl)
+```
+
+## Extra Credit
+
+What would you need to do to fix the code above?
+```{r}
+adsl_counts <- function(dataFile) {
+  
+ adsl_saf <- dataFile %>%
+    filter(SAFFL == "Y")
+  
+  Big_N_cnt <-  adsl_saf %>%
+    group_by( TRT01AN, TRT01A  ) %>%
+    summarise(N = n())
+
+  small_n_cnt <- adsl_saf %>%
+    group_by( TRT01AN, TRT01A,  SEX ) %>%
+    summarise(n = n())
 
   adsl_mrg_cnt <- small_n_cnt %>%
     left_join(Big_N_cnt, by = c("TRT01AN","TRT01A")) %>%
@@ -274,6 +319,3 @@ adsl <- import(inFile)
 adsl_counts(dataFile = adsl)
 ```
 
-## Extra Credit
-
-What would you need to do to fix the code above?

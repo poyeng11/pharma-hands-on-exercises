@@ -146,29 +146,27 @@ calculate_Big_N_cnt <- function(adsl_data) {
 Now add some code to turn the lines of code below into the `calculate_small_n_cnt` function that takes in `adsl_data` argument. Remember to `return()` the `small_n_cnt.`
 
 ```{r}
-
+calculate_small_n_cnt <- function(adsl_data) {
   small_n_cnt <-  adsl_data  %>%
   group_by( TRT01AN, TRT01A,  SEX ) %>%
   count(name = "n")
-  small_n_cnt
-
+  return(small_n_cnt)
+}
 ```
 
 And now let's transform the code below into the `adsl_counts`function. Remember, this function will take the output of the two functions above as arguments.
 
 ```{r}
  
-
-  adsl_mrg_cnt <- small_n_cnt %>%
-    left_join(Big_N_cnt, by = c("TRT01A", "TRT01AN")) %>%
+adsl_counts <- function(adsl_saf) {
+   adsl_mrg_cnt <- calculate_small_n_cnt() %>%
+    left_join(calculate_Big_N_cnt(), by = c("TRT01A", "TRT01AN")) %>%
     mutate(perc = round((n/N)*100, digits=1)) %>%
     ungroup() %>%
     select(TRT01A, SEX, perc) 
-  
-  adsl_mrg_cnt
+  return(adsl_mrg_cnt)
 
-
-
+}
 ```
 
 ## Writing tests
@@ -240,7 +238,7 @@ expect_length(names(adsl_data), 6)
 
 Run the code below, look at the error and fix it accordingly. Notice how user-friendly the error is!
 
-```{r}
+```{r error = TRUE}
 test_that("wrangle_data() output is correct", {
   adsl_data <- wrangle_data(adsl_data)
   
@@ -274,7 +272,7 @@ When running the code, we received a value of `3` which is what we would expect 
 
 ```{r}
 test_that("expected columns are all present in the wrangle_data() output", {
-  expect_equal( , )
+  expect_equal( sum(expected_vars %in% names(adsl_data)),3 )
 
 })
 ```
@@ -343,9 +341,11 @@ test_that("calculate_Big_N_cnt() output has expected dim, columns, and types", {
 Let's not forget about the `calculate_small_n_cnt` function that we created earlier and set some expectations for the data **outputs** for that function as well. Complete the functions below to have correct expectations for the `small_n_cnt` output that is returned by the function. Remember, the `small_n_cnt` object returns more columns and rows than its `Big_N_cnt` counterpart. You'll also get twice as many rows since treatment groups are divided by sex as well.
 
 ```{r}
+small_n_cols <- c("TRT01AN", "TRT01A","SEX", "n")
+
 test_that("calculate_small_n_cnt() output has expected dim, columns, and types", {
-   expect_named( , )
-   expect_equal( , )
+   expect_named(calculate_small_n_cnt(test_data) ,small_n_cols )
+   expect_equal(dim(calculate_small_n_cnt(test_data)), c(nrow(unique(calculate_small_n_cnt(test_data)[, c("TRT01A", "SEX")])), 4))
 })
 
 ```
@@ -368,6 +368,15 @@ test_that("calculate_Big_N_cnt() output has expected dim, columns, and types", {
   expect_named(test_Big_N_cnt, c("TRT01AN", "TRT01A", "N"))
   expect_equal(dim(test_Big_N_cnt), c(length(unique(test_Big_N_cnt$TRT01A)), 3))
   expect_type(test_Big_N_cnt$N, "integer")
+})
+
+test_that("calculate_small_n_cnt() output has expected dim, columns, and types", {
+  test_small_n_cnt <- calculate_small_n_cnt(test_data)
+  small_n_cols <- c("TRT01AN", "TRT01A","SEX", "n")
+
+  expect_named(test_small_n_cnt, small_n_cols )
+  expect_equal(dim(test_small_n_cnt), c(nrow(unique(test_small_n_cnt)[, c("TRT01A", "SEX")]), 4))
+  expect_type(test_small_n_cnt$n, "integer")
 })
 
 ```
@@ -526,6 +535,34 @@ adsl_test_data
 
 ```{r}
 # TODO Create test cases for adsl_counts()
+
+
+test_that("Totals per treatment should be 100%", {
+  aggregate_small_n_cnt <- aggregate(
+    x = adsl_test_data$perc, 
+    by=list(TRT01A=adsl_test_data$TRT01A), 
+    FUN=sum)
+  
+  expect_identical(aggregate_small_n_cnt$x, c(100,100))
+})
+
+test_that("adsl_counts output has expected dim, columns, and types", {
+  
+  expect_named(adsl_test_data, c( "TRT01A","SEX", "perc"))
+  expect_equal(dim(adsl_test_data), c(nrow(unique(adsl_test_data)[, c("TRT01A", "SEX")]), 3))
+  expect_type(adsl_test_data$perc, "double")
+}) 
+
+test_that("adsl_counts output has been recoded", {
+  
+  expect_named(adsl_test_data, c( "TRT01A","SEX", "perc"))
+  expect_equal(dim(adsl_test_data), c(nrow(unique(adsl_test_data)[, c("TRT01A", "SEX")]), 3))
+  expect_type(adsl_test_data$perc, "double")
+  expect_equal(unique(adsl_test_data$SEX), c("Female","Male"))
+}) 
+
+
+
 
 ```
 

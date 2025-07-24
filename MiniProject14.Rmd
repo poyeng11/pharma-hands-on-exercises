@@ -141,7 +141,7 @@ library(rmarkdown)
 # Plot Snippet
 If you spend a fair amount of time setting up and adjusting a graph to be just the way you want it, you want to be able to use it again!
 
-```{r}
+```{r plot_snip, eval=FALSE}
 ######################################################################
 ggplot(${1:data}, aes(x=${2:variable}, y=${3:variable})) + 
   geom_col(color = "black", fill="#0072B2") +
@@ -162,6 +162,30 @@ ggplot(${1:data}, aes(x=${2:variable}, y=${3:variable})) +
 
 Reminder, in Mini Projects 7 and 11 we discussed writing functions for chunks of code that you use again and again. You could also create a function for the above code for reuse. 
 
+```{r scatter_snip, eval=FALSE}
+snippet scatterplot
+	ggplot(${1:data}, aes(x = ${2:x}, y = ${3:y})) +
+	geom_point() +
+	labs(title = "${4:title}", x = "${5:label for x-axis}", y = "${6:label for y-axis}")
+	
+snippet header
+	## ----------------------------------------------------------------
+	## Script Name: ${1:script_name}
+	## Usage: ${2:describe usage}
+	##
+	## Author: ${3:Your Name}
+	## Date Created: `r Sys.Date()`
+	##
+	## ----------------------------------------------------------------
+	## Version History
+	## ----------------------------------------------------------------
+	## ${4:version}	${5:Modified date}	${6:author}	${7:info on changes}
+	## ------------------------------------------------------------------
+	
+snippet create_input
+	dput(df[${1: starting row}:${2: ending row}, c("${3:col1}", "${4:col2}", ${5:...})])
+
+```
 
 ##References
 -	https://rstudio.github.io/rstudio-extensions/rstudio_snippets.html 
